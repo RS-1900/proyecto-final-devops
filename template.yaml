@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Despliegue de infraestructura basica para el proyecto final de DevOps
+
+Resources:
+  # Instancia EC2 t2.micro
+  ServidorDevOps:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      # ID de imagen linux 2023
+      ImageId: ami-0440d3b780d96b29d 
+      IamInstanceProfile: LabInstanceProfile
+      Tags:
+        - Key: Name
+          Value: Servidor-CloudFormation
+
+  # Bucket S3 con nombre dinamico y versionado
+  BucketDatosDevOps:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "bucket-devops-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+
+Outputs:
+  InstanciaID:
+    Description: ID de la instancia EC2 creada
+    Value: !Ref ServidorDevOps
+  NombreBucket:
+    Description: Nombre del bucket S3 generado dinamicamente
+    Value: !Ref BucketDatosDevOps
