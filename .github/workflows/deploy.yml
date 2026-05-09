@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependencias y Test
+        run: |
+          pip install flask==2.3.3
+          python3 -c "from docker.app import app; print('App importada con exito')"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v3
+
+      - name: Configuracion de credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Comprimir y subir a S3
+        run: |
+          zip -r deployment.zip docker/
+          aws s3 cp deployment.zip s3://bucket-devops-286768452536/deployment.zip
+
+
+      - name: Desplegar en EC2 via SSM
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=Servidor-CloudFormation" --query "Reservations[0].Instances[0].InstanceId" --output text)
+          
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids "$INSTANCE_ID" \
+            --parameters 'commands=["echo Pipeline ejecutado exitosamente en la instancia"]' \
+            --comment "Despliegue automatizado desde GitHub Actions"
